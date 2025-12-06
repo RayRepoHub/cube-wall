@@ -1,191 +1,456 @@
 <!DOCTYPE html>
 <html lang="zh">
+
 <head>
   <meta charset="UTF-8">
   <title>Cube Wall</title>
   <style>
     :root {
       --blue-grey: #607d8b;
+      --blue-grey-light: #78909c;
+      --blue-grey-dark: #455a64;
     }
-    html, body {
+
+    html,
+    body {
       height: 100vh;
+      overflow: hidden;
     }
+
     body {
       margin: 0;
       display: flex;
       flex-direction: column;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
+
     header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0px 40px 0px 40px;
+      padding: 10px 40px;
       background-color: var(--blue-grey);
       color: white;
-      box-shadow: 0 2px 4px -1px rgba(0,0,0,.2), 0 4px 5px rgba(0,0,0,.14), 0 1px 10px rgba(0,0,0,.12);
+      box-shadow: 0 2px 4px -1px rgba(0, 0, 0, .2), 0 4px 5px rgba(0, 0, 0, .14), 0 1px 10px rgba(0, 0, 0, .12);
+      gap: 20px;
     }
-    header #dimension {
-      box-shadow: none;
-      font-size: 16px;
-      flex: 1;
+
+    .title {
       margin: 0;
+      font-weight: 500;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .dimension-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    label[for="dimension"] {
       white-space: nowrap;
-      text-overflow: ellipsis;
-      overflow: hidden;
-      min-width: 0;
-      height: 30px;
-      background-color: transparent;
-      border-style: none;
-      border-bottom: 1px solid white;
-      color: white;
     }
-    header #build, #help {
-      background-color: transparent;
+
+    header #dimension {
+      font-size: 16px;
+      width: 80px;
+      height: 35px;
+      padding: 0 8px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: 4px;
       color: white;
-      padding: 8px 16px 8px 16px;
+      transition: background-color 0.2s;
+    }
+
+    header #dimension:focus {
+      outline: none;
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .canvas-size-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .size-btn {
+      width: 35px;
+      height: 35px;
+      border-radius: 4px;
+      border: none;
+      background-color: var(--blue-grey-light);
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s;
+    }
+
+    .size-btn:hover {
+      background-color: var(--blue-grey-dark);
+    }
+
+    header button:not(.size-btn) {
+      padding: 8px 16px;
       font-size: 1em;
-      border-style: none;
+      border-radius: 4px;
+      border: none;
+      background-color: var(--blue-grey-light);
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.2s;
     }
-    header #build:hover, #help:hover {
-      background-color: lightgrey;
-      color: black;
-      border-style: none;
+
+    header button:not(.size-btn):hover {
+      background-color: var(--blue-grey-dark);
     }
+
     main {
       flex: 1;
       display: flex;
-      margin: 40px;
+      justify-content: center;
+      align-items: center;
+      margin: 20px;
+      overflow: auto;
     }
-    #left, #right {
-      box-shadow: 0 1px 5px rgba(0,0,0,.2), 0 2px 2px rgba(0,0,0,.14), 0 3px 1px -2px rgba(0,0,0,.12);
+
+    .canvas-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
     }
-    #gutter {
-      width: 40px;
+
+    canvas {
+      box-shadow: 0 1px 5px rgba(0, 0, 0, .2), 0 2px 2px rgba(0, 0, 0, .14), 0 3px 1px -2px rgba(0, 0, 0, .12);
+      border-radius: 4px;
+      transition: all 0.3s ease;
+    }
+
+    #size-display {
+      color: white;
+      font-size: 14px;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+      header {
+        padding: 10px 20px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      .controls {
+        justify-content: center;
+      }
+
+      main {
+        margin: 10px;
+      }
+
+      .canvas-container {
+        gap: 20px;
+        flex-direction: column;
+      }
     }
   </style>
 </head>
+
 <body>
   <header>
     <h2 class="title">Cube Wall</h2>
-    <div class="input">
-      <label for="dimension">Dimension:</label>
-      <input id="dimension" type="number" min="2" max="200" value="10"/>
+    <div class="controls">
+      <div class="dimension-control">
+        <label for="dimension">Dimension:</label>
+        <input id="dimension" type="number" min="2" max="200" value="10" />
+      </div>
       <button id="build">Build</button>
       <button id="help">Help</button>
+      <div class="canvas-size-controls">
+        <button id="zoom-out" class="size-btn">-</button>
+        <span id="size-display">100%</span>
+        <button id="zoom-in" class="size-btn">+</button>
+      </div>
     </div>
   </header>
   <main id="main">
-    <canvas id="left">left</canvas>
-    <div id="gutter"></div>
-    <canvas id="right">right</canvas>
+    <div class="canvas-container">
+      <canvas id="left">left</canvas>
+      <canvas id="right">right</canvas>
+    </div>
   </main>
 
   <script>
     class Wall {
       constructor() {
+        // 初始化DOM元素
         this.main = document.getElementById('main')
         this.leftCanvas = document.getElementById('left')
         this.leftCtx = this.leftCanvas.getContext('2d')
-        this.gutter = document.getElementById('gutter')
         this.rightCanvas = document.getElementById('right')
         this.rightCtx = this.rightCanvas.getContext('2d')
-        this.canvasWidth = (main.clientWidth - gutter.clientWidth) / 2
-        this.cellWidth = 0
-        this.colors = ['white', 'red', 'blue', 'yellow', 'green', 'orange']
-        this.leftCanvas.width = this.canvasWidth
-        this.leftCanvas.height = this.canvasWidth
-        this.leftCanvas.style.width = this.canvasWidth + 'px'
-        this.leftCanvas.style.height = this.canvasWidth + 'px';
-        this.rightCanvas.width = this.canvasWidth
-        this.rightCanvas.height = this.canvasWidth
-        this.rightCanvas.style.width = this.canvasWidth + 'px'
-        this.rightCanvas.style.height = this.canvasWidth + 'px';
+        this.sizeDisplay = document.getElementById('size-display')
+
+        // 缩放相关变量
+        this.zoomLevel = 1.0; // 初始缩放比例
+        this.minZoom = 0.5;   // 最小缩放比例 (50%)
+        this.maxZoom = 2.0;   // 最大缩放比例 (200%)
+        this.zoomStep = 0.1;  // 每次缩放步长
+
+        // 颜色数组
+        this.colors = ['white', 'red', 'blue', 'yellow', 'green', 'orange'];
+
+        // 定时器和闪烁状态
+        this.timerId = null;
+        this.blink = false;
+
+        // 初始化画布大小
+        this.calculateCanvasSize();
+        this.updateCanvasDimensions();
+
+        // 绑定缩放事件
+        this.bindZoomEvents();
       }
-    }
-    Wall.prototype.generateMatrix = function() {
-      let n = this.dimension
-      let matrix = new Array(n)
-      for (let x = 0; x < n; x++) {
-        matrix[x] = new Array(n)
-        for (let y = 0; y < n; y++) {
-          let color = this.colors[parseInt(Math.random() * 6)]
-          matrix[x][y] = color
+
+      // 计算画布基础尺寸
+      calculateCanvasSize() {
+        const mainWidth = this.main.clientWidth;
+        const mainHeight = this.main.clientHeight;
+        const gap = 40; // 画布之间的间距
+
+        // 计算基础画布宽度（考虑间距）
+        this.baseCanvasWidth = Math.min(
+          (mainWidth - gap) / 2,
+          mainHeight - 40,  // 留出顶部和底部空间
+          800               // 最大基础宽度限制
+        );
+      }
+
+      // 更新画布尺寸（考虑缩放）
+      updateCanvasDimensions() {
+        const scaledWidth = this.baseCanvasWidth * this.zoomLevel;
+
+        // 更新画布实际尺寸
+        this.canvasWidth = scaledWidth;
+
+        // 设置画布属性
+        this.leftCanvas.width = scaledWidth;
+        this.leftCanvas.height = scaledWidth;
+        this.leftCanvas.style.width = `${scaledWidth}px`;
+        this.leftCanvas.style.height = `${scaledWidth}px`;
+
+        this.rightCanvas.width = scaledWidth;
+        this.rightCanvas.height = scaledWidth;
+        this.rightCanvas.style.width = `${scaledWidth}px`;
+        this.rightCanvas.style.height = `${scaledWidth}px`;
+
+        // 更新显示的缩放百分比
+        this.sizeDisplay.textContent = `${Math.round(this.zoomLevel * 100)}%`;
+
+        // 重新计算单元格宽度
+        if (this.dimension) {
+          this.cellWidth = this.canvasWidth / this.dimension;
         }
       }
-      return matrix
-    }
-    Wall.prototype.drawPoint = function(ctx, x, y, color) {
-      let w = this.cellWidth
-      ctx.fillStyle = color
-      ctx.fillRect(x * w, y * w, w, w);
-      ctx.lineWidth = 0.5
-      ctx.strokeRect(x * w, y * w, w, w);
-    }
-    Wall.prototype.drawMatrix = function(ctx, matrix) {
-      let n = this.dimension
-      for (let x = 0; x < n; x++) {
-        for (let y = 0; y < n; y++) {
-          this.drawPoint(ctx, x, y, matrix[x][y])
+
+      // 绑定缩放按钮事件
+      bindZoomEvents() {
+        // 放大按钮
+        document.getElementById('zoom-in').addEventListener('click', () => {
+          if (this.zoomLevel < this.maxZoom) {
+            this.zoomLevel += this.zoomStep;
+            this.zoomLevel = Math.min(this.zoomLevel, this.maxZoom);
+            this.updateCanvasDimensions();
+            // 如果已经生成了矩阵，重新绘制
+            if (this.matrix) {
+              this.drawMatrix(this.leftCtx, this.matrix);
+              this.drawMatrix(this.rightCtx, this.matrix);
+            }
+          }
+        });
+
+        // 缩小按钮
+        document.getElementById('zoom-out').addEventListener('click', () => {
+          if (this.zoomLevel > this.minZoom) {
+            this.zoomLevel -= this.zoomStep;
+            this.zoomLevel = Math.max(this.zoomLevel, this.minZoom);
+            this.updateCanvasDimensions();
+            // 如果已经生成了矩阵，重新绘制
+            if (this.matrix) {
+              this.drawMatrix(this.leftCtx, this.matrix);
+              this.drawMatrix(this.rightCtx, this.matrix);
+            }
+          }
+        });
+
+        // 窗口大小变化时重新计算画布尺寸
+        window.addEventListener('resize', () => {
+          this.calculateCanvasSize();
+          this.updateCanvasDimensions();
+          if (this.matrix) {
+            this.drawMatrix(this.leftCtx, this.matrix);
+            this.drawMatrix(this.rightCtx, this.matrix);
+          }
+        });
+      }
+
+      // 生成随机颜色矩阵
+      generateMatrix() {
+        let n = this.dimension;
+        let matrix = new Array(n);
+        for (let x = 0; x < n; x++) {
+          matrix[x] = new Array(n);
+          for (let y = 0; y < n; y++) {
+            let color = this.colors[parseInt(Math.random() * 6)];
+            matrix[x][y] = color;
+          }
         }
+        return matrix;
       }
-      ctx.strokeRect(0, 0, this.canvasWidth, this.canvasWidth);
-    }
-    Wall.prototype.randomPoint = function() {
-      return {
-        x: parseInt(Math.random() * this.dimension),
-        y: parseInt(Math.random() * this.dimension)
+
+      // 绘制单个单元格
+      drawPoint(ctx, x, y, color) {
+        let w = this.cellWidth;
+        ctx.fillStyle = color;
+        ctx.fillRect(x * w, y * w, w, w);
+        ctx.lineWidth = 0.5;
+        ctx.strokeStyle = '#333';
+        ctx.strokeRect(x * w, y * w, w, w);
       }
-    }
-    Wall.prototype.randomColor = function(oldColor) {
-      let color = oldColor
-      do {
-        let colorIndex = parseInt(Math.random() * this.colors.length)
-        color = this.colors[colorIndex]
-      } while (color === oldColor)
-      return color
-    }
-    Wall.prototype.build = function() {
-      if (this.timerId) {
-        clearInterval(this.timerId)
-        this.timerId = null
-      }
-      this.dimension = parseInt(document.getElementById('dimension').value)
-      this.cellWidth = this.canvasWidth / this.dimension
-      let m = this.generateMatrix()
-      this.drawMatrix(this.leftCtx, m) 
-      this.matrix = m
-      this.point = this.randomPoint()
-      let {x, y} = this.point
-      let color = this.randomColor(m[x][x])
-      m[x][y] = color
-      this.drawMatrix(this.rightCtx, m)
-    }
-    Wall.prototype.help = function() {
-      let {x, y} = this.point
-      let color = this.matrix[x][y]
-      if (this.timerId) {
-        clearInterval(this.timerId)
-        this.timerId = null
-        this.blink = false
-        this.drawPoint(this.rightCtx, x, y, color)
-        return
-      }
-      this.timerId = setInterval(() => {
-        if (this.blink) {
-          this.drawPoint(this.rightCtx, x, y, 'black')
-        } else {
-          this.drawPoint(this.rightCtx, x, y, color)
+
+      // 绘制整个矩阵
+      drawMatrix(ctx, matrix) {
+        // 清空画布
+        ctx.clearRect(0, 0, this.canvasWidth, this.canvasWidth);
+
+        let n = this.dimension;
+        for (let x = 0; x < n; x++) {
+          for (let y = 0; y < n; y++) {
+            this.drawPoint(ctx, x, y, matrix[x][y]);
+          }
         }
-        this.blink = !this.blink
-      }, 300)
-      this.drawPoint(this.rightCtx, x, y, 'black')
+
+        // 绘制外边框
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#000';
+        ctx.strokeRect(0, 0, this.canvasWidth, this.canvasWidth);
+      }
+
+      // 生成随机坐标点
+      randomPoint() {
+        return {
+          x: parseInt(Math.random() * this.dimension),
+          y: parseInt(Math.random() * this.dimension)
+        };
+      }
+
+      // 生成与原颜色不同的随机颜色
+      randomColor(oldColor) {
+        let color = oldColor;
+        do {
+          let colorIndex = parseInt(Math.random() * this.colors.length);
+          color = this.colors[colorIndex];
+        } while (color === oldColor);
+        return color;
+      }
+
+      // 构建/重置立方体墙
+      build() {
+        // 清除之前的定时器
+        if (this.timerId) {
+          clearInterval(this.timerId);
+          this.timerId = null;
+          this.blink = false;
+        }
+
+        // 获取并验证维度值
+        const dimensionInput = document.getElementById('dimension');
+        let dimension = parseInt(dimensionInput.value);
+
+        // 验证维度值范围
+        if (isNaN(dimension) || dimension < 2) {
+          dimension = 2;
+          dimensionInput.value = 2;
+        } else if (dimension > 200) {
+          dimension = 200;
+          dimensionInput.value = 200;
+        }
+
+        this.dimension = dimension;
+        this.cellWidth = this.canvasWidth / this.dimension;
+
+        // 生成随机矩阵并绘制到左侧画布
+        let matrix = this.generateMatrix();
+        this.drawMatrix(this.leftCtx, matrix);
+
+        // 保存矩阵引用
+        this.matrix = matrix;
+
+        // 随机修改一个点的颜色并绘制到右侧画布
+        this.point = this.randomPoint();
+        let { x, y } = this.point;
+        let color = this.randomColor(matrix[x][y]);
+        matrix[x][y] = color;
+        this.drawMatrix(this.rightCtx, matrix);
+      }
+
+      // 帮助功能 - 闪烁显示不同的点
+      help() {
+        // 如果没有生成矩阵，先构建
+        if (!this.matrix) {
+          this.build();
+          return;
+        }
+
+        let { x, y } = this.point;
+        let color = this.matrix[x][y];
+
+        // 如果已有定时器，清除并恢复正常显示
+        if (this.timerId) {
+          clearInterval(this.timerId);
+          this.timerId = null;
+          this.blink = false;
+          this.drawPoint(this.rightCtx, x, y, color);
+          return;
+        }
+
+        // 启动闪烁定时器
+        this.timerId = setInterval(() => {
+          if (this.blink) {
+            this.drawPoint(this.rightCtx, x, y, 'black');
+          } else {
+            this.drawPoint(this.rightCtx, x, y, color);
+          }
+          this.blink = !this.blink;
+        }, 300);
+
+        // 初始显示黑色
+        this.drawPoint(this.rightCtx, x, y, 'black');
+      }
     }
-    let wall = new Wall()
-    let build = document.getElementById('build')
-    build.onclick = wall.build.bind(wall);
-    let help = document.getElementById('help')
-    help.onclick = wall.help.bind(wall);
-    wall.build()
+
+    // 初始化应用
+    const wall = new Wall();
+
+    // 绑定按钮事件
+    document.getElementById('build').addEventListener('click', () => wall.build());
+    document.getElementById('help').addEventListener('click', () => wall.help());
+
+    // 初始构建
+    wall.build();
   </script>
 </body>
+
 </html>
