@@ -43,7 +43,7 @@
     .controls {
       display: flex;
       align-items: center;
-      gap: 15px;
+      gap: 20px;
       flex-wrap: wrap;
     }
 
@@ -74,32 +74,57 @@
       background-color: rgba(255, 255, 255, 0.2);
     }
 
-    .canvas-size-controls {
+    .slider-control {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      min-width: 200px;
     }
 
-    .size-btn {
-      width: 35px;
-      height: 35px;
+    .slider-label {
+      font-size: 14px;
+      white-space: nowrap;
+      width: 60px;
+      text-align: right;
+    }
+
+    .slider {
+      flex: 1;
+      height: 8px;
+      background-color: rgba(255, 255, 255, 0.2);
       border-radius: 4px;
-      border: none;
-      background-color: var(--blue-grey-light);
-      color: white;
-      font-size: 18px;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background-color 0.2s;
     }
 
-    .size-btn:hover {
-      background-color: var(--blue-grey-dark);
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: white;
+      border: 2px solid var(--blue-grey-dark);
+      transition: all 0.2s;
     }
 
-    header button:not(.size-btn) {
+    .slider::-webkit-slider-thumb:hover {
+      background: var(--blue-grey-light);
+      transform: scale(1.1);
+    }
+
+    .slider-value {
+      min-width: 60px;
+      font-size: 14px;
+      text-align: center;
+      background-color: rgba(0, 0, 0, 0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .action-btn {
       padding: 8px 16px;
       font-size: 1em;
       border-radius: 4px;
@@ -110,7 +135,7 @@
       transition: background-color 0.2s;
     }
 
-    header button:not(.size-btn):hover {
+    .action-btn:hover {
       background-color: var(--blue-grey-dark);
     }
 
@@ -127,7 +152,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 40px;
+      transition: gap 0.3s ease;
     }
 
     canvas {
@@ -136,17 +161,20 @@
       transition: all 0.3s ease;
     }
 
-    #size-display {
-      color: white;
-      font-size: 14px;
-      min-width: 60px;
-      text-align: center;
-    }
-
     /* 响应式调整 */
-    @media (max-width: 768px) {
+    @media (max-width: 992px) {
       header {
         padding: 10px 20px;
+        gap: 15px;
+      }
+
+      .slider-control {
+        min-width: 150px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      header {
         flex-direction: column;
         align-items: stretch;
         gap: 10px;
@@ -154,6 +182,13 @@
 
       .controls {
         justify-content: center;
+        gap: 10px;
+      }
+
+      .slider-control {
+        min-width: unset;
+        width: 100%;
+        max-width: 300px;
       }
 
       main {
@@ -161,7 +196,6 @@
       }
 
       .canvas-container {
-        gap: 20px;
         flex-direction: column;
       }
     }
@@ -176,17 +210,26 @@
         <label for="dimension">Dimension:</label>
         <input id="dimension" type="number" min="2" max="200" value="10" />
       </div>
-      <button id="build">Build</button>
-      <button id="help">Help</button>
-      <div class="canvas-size-controls">
-        <button id="zoom-out" class="size-btn">-</button>
-        <span id="size-display">100%</span>
-        <button id="zoom-in" class="size-btn">+</button>
+      <button id="build" class="action-btn">Build</button>
+      <button id="help" class="action-btn">Help</button>
+
+      <!-- 缩放滑块控制 - 调整为10%-200% -->
+      <div class="slider-control">
+        <span class="slider-label">缩放:</span>
+        <input type="range" id="zoom-slider" class="slider" min="10" max="200" value="100" step="1">
+        <span id="zoom-value" class="slider-value">100%</span>
+      </div>
+
+      <!-- 间距滑块控制 -->
+      <div class="slider-control">
+        <span class="slider-label">间距:</span>
+        <input type="range" id="gap-slider" class="slider" min="0" max="200" value="40" step="5">
+        <span id="gap-value" class="slider-value">40px</span>
       </div>
     </div>
   </header>
   <main id="main">
-    <div class="canvas-container">
+    <div class="canvas-container" id="canvas-container">
       <canvas id="left">left</canvas>
       <canvas id="right">right</canvas>
     </div>
@@ -201,13 +244,23 @@
         this.leftCtx = this.leftCanvas.getContext('2d')
         this.rightCanvas = document.getElementById('right')
         this.rightCtx = this.rightCanvas.getContext('2d')
-        this.sizeDisplay = document.getElementById('size-display')
+        this.canvasContainer = document.getElementById('canvas-container')
 
-        // 缩放相关变量
-        this.zoomLevel = 1.0; // 初始缩放比例
-        this.minZoom = 0.5;   // 最小缩放比例 (50%)
+        // 滑块和显示元素
+        this.zoomSlider = document.getElementById('zoom-slider')
+        this.zoomValue = document.getElementById('zoom-value')
+        this.gapSlider = document.getElementById('gap-slider')
+        this.gapValue = document.getElementById('gap-value')
+
+        // 缩放相关变量 - 调整为10%-200%
+        this.zoomLevel = 1.0; // 初始缩放比例 (100%)
+        this.minZoom = 0.1;   // 最小缩放比例 (10%)
         this.maxZoom = 2.0;   // 最大缩放比例 (200%)
-        this.zoomStep = 0.1;  // 每次缩放步长
+
+        // 间距相关变量
+        this.canvasGap = 40;  // 初始间距(px)
+        this.minGap = 0;      // 最小间距(px)
+        this.maxGap = 200;    // 最大间距(px)
 
         // 颜色数组
         this.colors = ['white', 'red', 'blue', 'yellow', 'green', 'orange'];
@@ -216,25 +269,79 @@
         this.timerId = null;
         this.blink = false;
 
-        // 初始化画布大小
+        // 初始化
+        this.setCanvasGap(this.canvasGap);
+        this.setZoomLevel(this.zoomLevel);
         this.calculateCanvasSize();
         this.updateCanvasDimensions();
 
-        // 绑定缩放事件
-        this.bindZoomEvents();
+        // 绑定事件
+        this.bindEvents();
+      }
+
+      // 设置画布间距
+      setCanvasGap(gap) {
+        this.canvasGap = Math.min(Math.max(gap, this.minGap), this.maxGap);
+        // 更新滑块值
+        this.gapSlider.value = this.canvasGap;
+        // 更新显示值
+        this.gapValue.textContent = `${this.canvasGap}px`;
+        // 设置CSS间距
+        const isMobile = window.innerWidth < 768;
+        this.canvasContainer.style.gap = `${this.canvasGap}px`;
+
+        // 重新计算画布尺寸
+        this.calculateCanvasSize();
+        this.updateCanvasDimensions();
+
+        // 重新绘制矩阵（如果存在）
+        if (this.matrix) {
+          this.drawMatrix(this.leftCtx, this.matrix);
+          this.drawMatrix(this.rightCtx, this.matrix);
+        }
+      }
+
+      // 设置缩放比例
+      setZoomLevel(level) {
+        this.zoomLevel = Math.min(Math.max(level, this.minZoom), this.maxZoom);
+        // 更新滑块值 (转换为百分比)
+        this.zoomSlider.value = Math.round(this.zoomLevel * 100);
+        // 更新显示值
+        this.zoomValue.textContent = `${Math.round(this.zoomLevel * 100)}%`;
+
+        // 更新画布尺寸
+        this.updateCanvasDimensions();
+
+        // 重新绘制矩阵（如果存在）
+        if (this.matrix) {
+          this.drawMatrix(this.leftCtx, this.matrix);
+          this.drawMatrix(this.rightCtx, this.matrix);
+        }
       }
 
       // 计算画布基础尺寸
       calculateCanvasSize() {
         const mainWidth = this.main.clientWidth;
         const mainHeight = this.main.clientHeight;
-        const gap = 40; // 画布之间的间距
+        const isMobile = window.innerWidth < 768;
 
-        // 计算基础画布宽度（考虑间距）
+        let availableWidth, availableHeight;
+
+        if (isMobile) {
+          // 移动端纵向布局
+          availableWidth = mainWidth - 40;
+          availableHeight = (mainHeight - this.canvasGap - 40) / 2;
+        } else {
+          // 桌面端横向布局
+          availableWidth = (mainWidth - this.canvasGap - 40) / 2;
+          availableHeight = mainHeight - 40;
+        }
+
+        // 计算基础画布宽度（取宽高中较小值，限制最大宽度）
         this.baseCanvasWidth = Math.min(
-          (mainWidth - gap) / 2,
-          mainHeight - 40,  // 留出顶部和底部空间
-          800               // 最大基础宽度限制
+          availableWidth,
+          availableHeight,
+          1000  // 增大最大基础宽度，适配小缩放比例
         );
       }
 
@@ -256,46 +363,36 @@
         this.rightCanvas.style.width = `${scaledWidth}px`;
         this.rightCanvas.style.height = `${scaledWidth}px`;
 
-        // 更新显示的缩放百分比
-        this.sizeDisplay.textContent = `${Math.round(this.zoomLevel * 100)}%`;
-
         // 重新计算单元格宽度
         if (this.dimension) {
           this.cellWidth = this.canvasWidth / this.dimension;
+
+          // 优化小缩放比例下的线条宽度
+          if (this.zoomLevel < 0.5) {
+            this.lineWidth = 0.1;
+          } else if (this.zoomLevel < 1.0) {
+            this.lineWidth = 0.3;
+          } else {
+            this.lineWidth = 0.5;
+          }
         }
       }
 
-      // 绑定缩放按钮事件
-      bindZoomEvents() {
-        // 放大按钮
-        document.getElementById('zoom-in').addEventListener('click', () => {
-          if (this.zoomLevel < this.maxZoom) {
-            this.zoomLevel += this.zoomStep;
-            this.zoomLevel = Math.min(this.zoomLevel, this.maxZoom);
-            this.updateCanvasDimensions();
-            // 如果已经生成了矩阵，重新绘制
-            if (this.matrix) {
-              this.drawMatrix(this.leftCtx, this.matrix);
-              this.drawMatrix(this.rightCtx, this.matrix);
-            }
-          }
+      // 绑定所有事件
+      bindEvents() {
+        // 缩放滑块事件 - 步长改为1%，更精细控制
+        this.zoomSlider.addEventListener('input', (e) => {
+          const zoomPercent = parseInt(e.target.value);
+          this.setZoomLevel(zoomPercent / 100);
         });
 
-        // 缩小按钮
-        document.getElementById('zoom-out').addEventListener('click', () => {
-          if (this.zoomLevel > this.minZoom) {
-            this.zoomLevel -= this.zoomStep;
-            this.zoomLevel = Math.max(this.zoomLevel, this.minZoom);
-            this.updateCanvasDimensions();
-            // 如果已经生成了矩阵，重新绘制
-            if (this.matrix) {
-              this.drawMatrix(this.leftCtx, this.matrix);
-              this.drawMatrix(this.rightCtx, this.matrix);
-            }
-          }
+        // 间距滑块事件
+        this.gapSlider.addEventListener('input', (e) => {
+          const gap = parseInt(e.target.value);
+          this.setCanvasGap(gap);
         });
 
-        // 窗口大小变化时重新计算画布尺寸
+        // 窗口大小变化事件
         window.addEventListener('resize', () => {
           this.calculateCanvasSize();
           this.updateCanvasDimensions();
@@ -304,6 +401,18 @@
             this.drawMatrix(this.rightCtx, this.matrix);
           }
         });
+
+        // 支持鼠标滚轮缩放（优化小比例缩放）
+        this.canvasContainer.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          // 根据当前缩放比例调整滚轮步长，小比例时步长更小
+          let step = 0.01; // 基础步长1%
+          if (this.zoomLevel > 0.5) step = 0.05; // 大于50%时步长5%
+          if (this.zoomLevel > 1.0) step = 0.1;  // 大于100%时步长10%
+
+          const delta = e.deltaY > 0 ? -step : step;
+          this.setZoomLevel(this.zoomLevel + delta);
+        }, { passive: false });
       }
 
       // 生成随机颜色矩阵
@@ -320,12 +429,14 @@
         return matrix;
       }
 
-      // 绘制单个单元格
+      // 绘制单个单元格 - 优化小缩放比例下的线条宽度
       drawPoint(ctx, x, y, color) {
         let w = this.cellWidth;
         ctx.fillStyle = color;
         ctx.fillRect(x * w, y * w, w, w);
-        ctx.lineWidth = 0.5;
+
+        // 根据缩放比例动态调整线条宽度
+        ctx.lineWidth = this.lineWidth || 0.5;
         ctx.strokeStyle = '#333';
         ctx.strokeRect(x * w, y * w, w, w);
       }
@@ -342,8 +453,8 @@
           }
         }
 
-        // 绘制外边框
-        ctx.lineWidth = 1;
+        // 绘制外边框 - 确保小缩放比例下边框可见
+        ctx.lineWidth = Math.max(0.5, this.zoomLevel);
         ctx.strokeStyle = '#000';
         ctx.strokeRect(0, 0, this.canvasWidth, this.canvasWidth);
       }
@@ -390,6 +501,15 @@
 
         this.dimension = dimension;
         this.cellWidth = this.canvasWidth / this.dimension;
+
+        // 初始化线条宽度
+        if (this.zoomLevel < 0.5) {
+          this.lineWidth = 0.1;
+        } else if (this.zoomLevel < 1.0) {
+          this.lineWidth = 0.3;
+        } else {
+          this.lineWidth = 0.5;
+        }
 
         // 生成随机矩阵并绘制到左侧画布
         let matrix = this.generateMatrix();
