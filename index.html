@@ -240,6 +240,11 @@
       transform: scale(1.1);
     }
 
+    /* 隐藏当前颜色的按钮 */
+    .color-btn.hidden {
+      display: none;
+    }
+
     main {
       flex: 1;
       display: flex;
@@ -931,13 +936,34 @@
             y: y
           };
 
-          // 显示颜色选择面板
+          // 获取当前色块的颜色
+          const targetMatrix = canvasType === 'left' ? this.leftMatrix : this.rightMatrix;
+          this.currentCellColor = targetMatrix[x][y];
+
+          // 显示颜色选择面板（过滤当前颜色）
           this.showColorPanel(event.clientX, event.clientY);
         }
       }
 
-      // 显示颜色选择面板
+      // 显示颜色选择面板（过滤当前颜色）
       showColorPanel(x, y) {
+        const colorBtns = document.querySelectorAll('.color-btn');
+
+        // 先重置所有颜色按钮的显示状态
+        colorBtns.forEach(btn => {
+          btn.classList.remove('hidden');
+        });
+
+        // 隐藏当前色块对应的颜色按钮
+        if (this.currentCellColor) {
+          colorBtns.forEach(btn => {
+            if (btn.dataset.color === this.currentCellColor) {
+              btn.classList.add('hidden');
+            }
+          });
+        }
+
+        // 显示面板
         this.colorPanel.style.display = 'flex';
         this.colorPanel.style.left = `${x + 10}px`;
         this.colorPanel.style.top = `${y + 10}px`;
@@ -955,6 +981,10 @@
       // 隐藏颜色选择面板
       hideColorPanel() {
         this.colorPanel.style.display = 'none';
+        // 重置隐藏状态，避免下次打开时残留
+        document.querySelectorAll('.color-btn').forEach(btn => {
+          btn.classList.remove('hidden');
+        });
       }
 
       // 更改选中色块的颜色 - 移除高亮边框
