@@ -450,6 +450,16 @@
         this.selectedCell = null // 选中的色块信息 {canvas, x, y}
         this.diffPoints = [] // 存储所有差异色块坐标
 
+        // 颜色名称映射（英文转中文）
+        this.colorNameMap = {
+          'white': '白色',
+          'red': '红色',
+          'blue': '蓝色',
+          'yellow': '黄色',
+          'green': '绿色',
+          'orange': '橙色'
+        };
+
         // 缩放相关变量 - 调整为10%-200%
         this.zoomLevel = 1.0; // 初始缩放比例 (100%)
         this.minZoom = 0.1;   // 最小缩放比例 (10%)
@@ -973,8 +983,10 @@
         // 隐藏颜色面板
         this.hideColorPanel();
 
-        // 提示颜色修改成功
-        this.showTip(`已将色块颜色修改为：${newColor}`);
+        // 获取颜色的中文名称
+        const colorChineseName = this.colorNameMap[newColor] || newColor;
+        // 提示颜色修改成功（显示中文颜色名）
+        this.showTip(`已将色块颜色修改为：${colorChineseName}`);
       }
 
       // 生成随机颜色矩阵
