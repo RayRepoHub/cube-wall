@@ -148,6 +148,64 @@
       background-color: #388e3c;
     }
 
+    /* 标记模式开关样式 */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 30px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 30px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked+.toggle-slider {
+      background-color: #4caf50;
+    }
+
+    input:checked+.toggle-slider:before {
+      transform: translateX(30px);
+    }
+
+    .toggle-label {
+      font-size: 14px;
+      white-space: nowrap;
+      margin-right: 8px;
+    }
+
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     /* 颜色选择面板样式 */
     .color-panel {
       position: fixed;
@@ -212,6 +270,24 @@
       font-size: 16px;
     }
 
+    /* 标记样式 */
+    .marker {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background-color: rgba(255, 0, 0, 0.8);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 0 2px white;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .marker-container {
+      position: relative;
+      display: inline-block;
+    }
+
     /* 响应式调整 */
     @media (max-width: 992px) {
       header {
@@ -270,6 +346,15 @@
       <button id="question" class="action-btn">手动出题</button>
       <button id="help" class="action-btn">帮助</button>
 
+      <!-- 标记模式开关 -->
+      <div class="toggle-container">
+        <span class="toggle-label">标记模式:</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="marker-toggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
       <!-- 缩放滑块控制 - 调整为10%-200% -->
       <div class="slider-control">
         <span class="slider-label">缩放:</span>
@@ -287,8 +372,13 @@
   </header>
   <main id="main">
     <div class="canvas-container" id="canvas-container">
-      <canvas id="left">left</canvas>
-      <canvas id="right">right</canvas>
+      <!-- 为画布添加容器用于标记定位 -->
+      <div class="marker-container" id="left-container">
+        <canvas id="left">left</canvas>
+      </div>
+      <div class="marker-container" id="right-container">
+        <canvas id="right">right</canvas>
+      </div>
     </div>
   </main>
 
@@ -312,6 +402,13 @@
         this.rightCanvas = document.getElementById('right')
         this.rightCtx = this.rightCanvas.getContext('2d')
         this.canvasContainer = document.getElementById('canvas-container')
+        this.leftContainer = document.getElementById('left-container')
+        this.rightContainer = document.getElementById('right-container')
+
+        // 标记模式相关
+        this.markerToggle = document.getElementById('marker-toggle')
+        this.isMarkerMode = false // 是否开启标记模式
+        this.markedCells = new Map() // 存储标记的单元格 key: canvasType-x-y, value: markerElement
 
         // 滑块和显示元素
         this.zoomSlider = document.getElementById('zoom-slider')
@@ -355,6 +452,8 @@
         this.bindEvents();
         // 绑定出题功能事件
         this.bindQuestionEvents();
+        // 绑定标记模式事件
+        this.bindMarkerEvents();
       }
 
       // 激活指定按钮，取消另一个按钮的激活状态
@@ -396,6 +495,9 @@
           this.drawMatrix(this.leftCtx, this.leftMatrix);
           this.drawMatrix(this.rightCtx, this.rightMatrix);
         }
+
+        // 更新标记位置
+        this.updateAllMarkersPosition();
       }
 
       // 设置缩放比例
@@ -414,6 +516,9 @@
           this.drawMatrix(this.leftCtx, this.leftMatrix);
           this.drawMatrix(this.rightCtx, this.rightMatrix);
         }
+
+        // 更新标记位置
+        this.updateAllMarkersPosition();
       }
 
       // 计算画布基础尺寸
@@ -497,6 +602,7 @@
             this.drawMatrix(this.leftCtx, this.leftMatrix);
             this.drawMatrix(this.rightCtx, this.rightMatrix);
           }
+          this.updateAllMarkersPosition();
         });
 
         // 支持鼠标滚轮缩放（优化小比例缩放）
@@ -512,22 +618,58 @@
         }, { passive: false });
       }
 
+      // 绑定标记模式相关事件
+      bindMarkerEvents() {
+        // 标记模式开关事件
+        this.markerToggle.addEventListener('change', (e) => {
+          this.isMarkerMode = e.target.checked;
+          // 如果关闭标记模式，隐藏颜色选择面板
+          if (!this.isMarkerMode) {
+            this.hideColorPanel();
+          }
+        });
+
+        // 为画布添加标记模式下的点击事件
+        this.leftCanvas.addEventListener('click', (e) => {
+          if (this.isMarkerMode) {
+            this.toggleMarker(e, 'left');
+            // 阻止原有功能执行
+            e.stopPropagation();
+            return false;
+          }
+        });
+
+        this.rightCanvas.addEventListener('click', (e) => {
+          if (this.isMarkerMode) {
+            this.toggleMarker(e, 'right');
+            // 阻止原有功能执行
+            e.stopPropagation();
+            return false;
+          }
+        });
+      }
+
       // 绑定出题功能相关事件
       bindQuestionEvents() {
         // 出题按钮点击事件
         this.questionBtn.addEventListener('click', () => {
+          // 如果标记模式开启，先关闭
+          if (this.isMarkerMode) {
+            this.markerToggle.checked = false;
+            this.isMarkerMode = false;
+          }
           this.enterQuestionMode();
         });
 
-        // 画布点击事件（选择色块）
+        // 画布点击事件（选择色块）- 仅在非标记模式下生效
         this.leftCanvas.addEventListener('click', (e) => {
-          if (this.isQuestionMode) {
+          if (this.isQuestionMode && !this.isMarkerMode) {
             this.selectCell(e, 'left');
           }
         });
 
         this.rightCanvas.addEventListener('click', (e) => {
-          if (this.isQuestionMode) {
+          if (this.isQuestionMode && !this.isMarkerMode) {
             this.selectCell(e, 'right');
           }
         });
@@ -545,10 +687,76 @@
           if (!this.colorPanel.contains(e.target) &&
             e.target !== this.leftCanvas &&
             e.target !== this.rightCanvas &&
-            e.target !== this.questionBtn) {
+            e.target !== this.questionBtn &&
+            !this.isMarkerMode) {
             this.hideColorPanel();
           }
         });
+      }
+
+      // 切换色块标记
+      toggleMarker(event, canvasType) {
+        const canvas = canvasType === 'left' ? this.leftCanvas : this.rightCanvas;
+        const container = canvasType === 'left' ? this.leftContainer : this.rightContainer;
+        const rect = canvas.getBoundingClientRect();
+
+        // 计算点击位置对应的单元格坐标
+        const x = Math.floor((event.clientX - rect.left) / (rect.width / this.dimension));
+        const y = Math.floor((event.clientY - rect.top) / (rect.height / this.dimension));
+
+        // 验证坐标有效性
+        if (x >= 0 && x < this.dimension && y >= 0 && y < this.dimension) {
+          const key = `${canvasType}-${x}-${y}`;
+
+          // 如果已标记，移除标记
+          if (this.markedCells.has(key)) {
+            const marker = this.markedCells.get(key);
+            marker.remove();
+            this.markedCells.delete(key);
+          } else {
+            // 添加新标记
+            const marker = this.createMarker(canvas, x, y);
+            container.appendChild(marker);
+            this.markedCells.set(key, marker);
+          }
+        }
+      }
+
+      // 创建标记元素
+      createMarker(canvas, x, y) {
+        const marker = document.createElement('div');
+        marker.className = 'marker';
+
+        // 计算标记位置（单元格中心）
+        const cellWidth = canvas.width / this.dimension;
+        const posX = (x * cellWidth) + (cellWidth / 2);
+        const posY = (y * cellWidth) + (cellWidth / 2);
+
+        marker.style.left = `${posX}px`;
+        marker.style.top = `${posY}px`;
+
+        return marker;
+      }
+
+      // 更新所有标记的位置
+      updateAllMarkersPosition() {
+        this.markedCells.forEach((marker, key) => {
+          const [canvasType, x, y] = key.split('-');
+          const canvas = canvasType === 'left' ? this.leftCanvas : this.rightCanvas;
+          const cellWidth = canvas.width / this.dimension;
+
+          const posX = (x * cellWidth) + (cellWidth / 2);
+          const posY = (y * cellWidth) + (cellWidth / 2);
+
+          marker.style.left = `${posX}px`;
+          marker.style.top = `${posY}px`;
+        });
+      }
+
+      // 清除所有标记
+      clearAllMarkers() {
+        this.markedCells.forEach(marker => marker.remove());
+        this.markedCells.clear();
       }
 
       // 进入出题模式
@@ -558,6 +766,7 @@
 
         this.isQuestionMode = true;
         this.diffPoints = [] // 清空历史差异点
+        this.clearAllMarkers(); // 清除所有标记
 
         // 首次点击显示提示
         if (!this.hasShownTip) {
@@ -785,6 +994,7 @@
         this.selectedCell = null;
         this.diffPoints = [];
         this.hideColorPanel();
+        this.clearAllMarkers(); // 清除所有标记
 
         // 获取并验证维度值
         const dimensionInput = document.getElementById('dimension');
