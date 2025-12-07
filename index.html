@@ -148,6 +148,15 @@
       background-color: #388e3c;
     }
 
+    /* 翻转按钮特殊样式 */
+    .flip-btn {
+      background-color: #2196f3;
+    }
+
+    .flip-btn:hover {
+      background-color: #1976d2;
+    }
+
     /* 标记模式开关样式 */
     .toggle-switch {
       position: relative;
@@ -244,7 +253,17 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: gap 0.3s ease;
+      transition: gap 0.3s ease, flex-direction 0.3s ease;
+    }
+
+    /* 垂直排布样式 */
+    .canvas-container.vertical {
+      flex-direction: column;
+    }
+
+    /* 水平排布样式 */
+    .canvas-container.horizontal {
+      flex-direction: row;
     }
 
     canvas {
@@ -345,6 +364,8 @@
       <button id="build" class="action-btn">电脑出题</button>
       <button id="question" class="action-btn">手动出题</button>
       <button id="help" class="action-btn">帮助</button>
+      <!-- 新增翻转按钮 -->
+      <button id="flip-layout" class="action-btn flip-btn">垂直排布</button>
 
       <!-- 标记模式开关 -->
       <div class="toggle-container">
@@ -371,7 +392,7 @@
     </div>
   </header>
   <main id="main">
-    <div class="canvas-container" id="canvas-container">
+    <div class="canvas-container horizontal" id="canvas-container">
       <!-- 为画布添加容器用于标记定位 -->
       <div class="marker-container" id="left-container">
         <canvas id="left">left</canvas>
@@ -404,6 +425,10 @@
         this.canvasContainer = document.getElementById('canvas-container')
         this.leftContainer = document.getElementById('left-container')
         this.rightContainer = document.getElementById('right-container')
+
+        // 新增：翻转按钮和排布状态
+        this.flipBtn = document.getElementById('flip-layout');
+        this.isVerticalLayout = false; // 当前是否为垂直排布
 
         // 标记模式相关
         this.markerToggle = document.getElementById('marker-toggle')
@@ -454,6 +479,8 @@
         this.bindQuestionEvents();
         // 绑定标记模式事件
         this.bindMarkerEvents();
+        // 新增：绑定翻转排布事件
+        this.bindFlipEvents();
       }
 
       // 激活指定按钮，取消另一个按钮的激活状态
@@ -525,16 +552,16 @@
       calculateCanvasSize() {
         const mainWidth = this.main.clientWidth;
         const mainHeight = this.main.clientHeight;
-        const isMobile = window.innerWidth < 768;
 
+        // 新增：根据当前排布方式计算可用空间
         let availableWidth, availableHeight;
 
-        if (isMobile) {
-          // 移动端纵向布局
+        if (this.isVerticalLayout || window.innerWidth < 768) {
+          // 垂直布局
           availableWidth = mainWidth - 40;
           availableHeight = (mainHeight - this.canvasGap - 40) / 2;
         } else {
-          // 桌面端横向布局
+          // 水平布局
           availableWidth = (mainWidth - this.canvasGap - 40) / 2;
           availableHeight = mainHeight - 40;
         }
@@ -578,6 +605,41 @@
             this.lineWidth = 0.5;
           }
         }
+      }
+
+      // 新增：切换排布方式
+      toggleLayout() {
+        this.isVerticalLayout = !this.isVerticalLayout;
+
+        // 更新容器类名
+        this.canvasContainer.classList.toggle('vertical', this.isVerticalLayout);
+        this.canvasContainer.classList.toggle('horizontal', !this.isVerticalLayout);
+
+        // 更新按钮文本
+        this.flipBtn.textContent = this.isVerticalLayout ? '水平排布' : '垂直排布';
+
+        // 重新计算画布尺寸
+        this.calculateCanvasSize();
+        this.updateCanvasDimensions();
+
+        // 重新绘制矩阵
+        if (this.leftMatrix && this.rightMatrix) {
+          this.drawMatrix(this.leftCtx, this.leftMatrix);
+          this.drawMatrix(this.rightCtx, this.rightMatrix);
+        }
+
+        // 更新标记位置
+        this.updateAllMarkersPosition();
+
+        // 显示提示
+        this.showTip(`已切换为${this.isVerticalLayout ? '垂直' : '水平'}排布`);
+      }
+
+      // 新增：绑定翻转排布事件
+      bindFlipEvents() {
+        this.flipBtn.addEventListener('click', () => {
+          this.toggleLayout();
+        });
       }
 
       // 绑定所有基础事件
