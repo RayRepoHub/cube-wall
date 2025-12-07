@@ -139,12 +139,12 @@
       background-color: var(--blue-grey-dark);
     }
 
-    /* 出题按钮特殊样式 */
-    .question-btn {
+    /* 激活状态样式（绿色） */
+    .action-btn.active {
       background-color: #4caf50;
     }
 
-    .question-btn:hover {
+    .action-btn.active:hover {
       background-color: #388e3c;
     }
 
@@ -267,7 +267,7 @@
         <input id="dimension" type="number" min="2" max="200" value="10" />
       </div>
       <button id="build" class="action-btn">电脑出题</button>
-      <button id="question" class="action-btn question-btn">手动出题</button>
+      <button id="question" class="action-btn">手动出题</button>
       <button id="help" class="action-btn">帮助</button>
 
       <!-- 缩放滑块控制 - 调整为10%-200% -->
@@ -320,6 +320,7 @@
         this.gapValue = document.getElementById('gap-value')
 
         // 出题功能相关元素
+        this.buildBtn = document.getElementById('build');
         this.questionBtn = document.getElementById('question')
         this.colorPanel = document.getElementById('color-panel')
         this.hasShownTip = false // 标记是否已显示过首次提示
@@ -354,6 +355,20 @@
         this.bindEvents();
         // 绑定出题功能事件
         this.bindQuestionEvents();
+      }
+
+      // 激活指定按钮，取消另一个按钮的激活状态
+      activateButton(activeBtn) {
+        // 移除所有按钮的激活状态
+        this.buildBtn.classList.remove('active');
+        this.questionBtn.classList.remove('active');
+
+        // 激活指定按钮
+        if (activeBtn === 'build') {
+          this.buildBtn.classList.add('active');
+        } else if (activeBtn === 'question') {
+          this.questionBtn.classList.add('active');
+        }
       }
 
       // 深度克隆矩阵（解决引用传递问题）
@@ -538,6 +553,9 @@
 
       // 进入出题模式
       enterQuestionMode() {
+        // 激活手动出题按钮，取消电脑出题按钮激活状态
+        this.activateButton('question');
+
         this.isQuestionMode = true;
         this.diffPoints = [] // 清空历史差异点
 
@@ -549,9 +567,6 @@
 
         // 生成完全相同的双魔方墙
         this.buildSameMatrix();
-
-        // 高亮显示出题模式
-        this.questionBtn.style.backgroundColor = '#1b5e20';
       }
 
       // 生成完全相同的双魔方墙
@@ -755,6 +770,9 @@
 
       // 构建/重置立方体墙（原有功能，生成带一个差异点的墙）
       build() {
+        // 激活电脑出题按钮，取消手动出题按钮激活状态
+        this.activateButton('build');
+
         // 清除之前的定时器
         if (this.timerId) {
           clearInterval(this.timerId);
@@ -767,7 +785,6 @@
         this.selectedCell = null;
         this.diffPoints = [];
         this.hideColorPanel();
-        this.questionBtn.style.backgroundColor = '';
 
         // 获取并验证维度值
         const dimensionInput = document.getElementById('dimension');
