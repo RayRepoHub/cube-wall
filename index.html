@@ -279,6 +279,11 @@
         this.bindEvents();
       }
 
+      // 深度克隆矩阵（解决引用传递问题）
+      cloneMatrix(matrix) {
+        return matrix.map(row => [...row]);
+      }
+
       // 设置画布间距
       setCanvasGap(gap) {
         this.canvasGap = Math.min(Math.max(gap, this.minGap), this.maxGap);
@@ -295,9 +300,9 @@
         this.updateCanvasDimensions();
 
         // 重新绘制矩阵（如果存在）
-        if (this.matrix) {
-          this.drawMatrix(this.leftCtx, this.matrix);
-          this.drawMatrix(this.rightCtx, this.matrix);
+        if (this.leftMatrix && this.rightMatrix) {
+          this.drawMatrix(this.leftCtx, this.leftMatrix);
+          this.drawMatrix(this.rightCtx, this.rightMatrix);
         }
       }
 
@@ -313,9 +318,9 @@
         this.updateCanvasDimensions();
 
         // 重新绘制矩阵（如果存在）
-        if (this.matrix) {
-          this.drawMatrix(this.leftCtx, this.matrix);
-          this.drawMatrix(this.rightCtx, this.matrix);
+        if (this.leftMatrix && this.rightMatrix) {
+          this.drawMatrix(this.leftCtx, this.leftMatrix);
+          this.drawMatrix(this.rightCtx, this.rightMatrix);
         }
       }
 
@@ -396,9 +401,9 @@
         window.addEventListener('resize', () => {
           this.calculateCanvasSize();
           this.updateCanvasDimensions();
-          if (this.matrix) {
-            this.drawMatrix(this.leftCtx, this.matrix);
-            this.drawMatrix(this.rightCtx, this.matrix);
+          if (this.leftMatrix && this.rightMatrix) {
+            this.drawMatrix(this.leftCtx, this.leftMatrix);
+            this.drawMatrix(this.rightCtx, this.rightMatrix);
           }
         });
 
@@ -467,14 +472,14 @@
         };
       }
 
-      // 生成与原颜色不同的随机颜色
+      // 生成与原颜色不同的随机颜色（确保绝对不同）
       randomColor(oldColor) {
-        let color = oldColor;
-        do {
-          let colorIndex = parseInt(Math.random() * this.colors.length);
-          color = this.colors[colorIndex];
-        } while (color === oldColor);
-        return color;
+        // 过滤掉原颜色，只从剩余颜色中随机选择
+        const availableColors = this.colors.filter(color => color !== oldColor);
+        // 确保有可用颜色（理论上colors数组长度>1，不会触发）
+        if (availableColors.length === 0) return this.colors[0];
+        const colorIndex = parseInt(Math.random() * availableColors.length);
+        return availableColors[colorIndex];
       }
 
       // 构建/重置立方体墙
@@ -511,53 +516,58 @@
           this.lineWidth = 0.5;
         }
 
-        // 生成随机矩阵并绘制到左侧画布
-        let matrix = this.generateMatrix();
-        this.drawMatrix(this.leftCtx, matrix);
+        // 1. 生成原始矩阵并保存为左侧矩阵
+        this.leftMatrix = this.generateMatrix();
+        // 2. 深度克隆原始矩阵作为右侧矩阵（关键修复：避免引用同一对象）
+        this.rightMatrix = this.cloneMatrix(this.leftMatrix);
 
-        // 保存矩阵引用
-        this.matrix = matrix;
+        // 3. 绘制左侧画布（原始矩阵）
+        this.drawMatrix(this.leftCtx, this.leftMatrix);
 
-        // 随机修改一个点的颜色并绘制到右侧画布
-        this.point = this.randomPoint();
-        let { x, y } = this.point;
-        let color = this.randomColor(matrix[x][y]);
-        matrix[x][y] = color;
-        this.drawMatrix(this.rightCtx, matrix);
+        // 4. 随机修改右侧矩阵的一个点（确保颜色不同）
+        this.diffPoint = this.randomPoint(); // 保存差异点
+        const { x, y } = this.diffPoint;
+        const oldColor = this.leftMatrix[x][y];
+        const newColor = this.randomColor(oldColor);
+        this.rightMatrix[x][y] = newColor;
+
+        // 5. 绘制右侧画布（修改后的矩阵）
+        this.drawMatrix(this.rightCtx, this.rightMatrix);
       }
 
       // 帮助功能 - 闪烁显示不同的点
       help() {
         // 如果没有生成矩阵，先构建
-        if (!this.matrix) {
+        if (!this.leftMatrix || !this.rightMatrix) {
           this.build();
           return;
         }
 
-        let { x, y } = this.point;
-        let color = this.matrix[x][y];
+        const { x, y } = this.diffPoint;
+        const originalColor = this.leftMatrix[x][y];
+        const modifiedColor = this.rightMatrix[x][y];
 
         // 如果已有定时器，清除并恢复正常显示
         if (this.timerId) {
           clearInterval(this.timerId);
           this.timerId = null;
           this.blink = false;
-          this.drawPoint(this.rightCtx, x, y, color);
+          this.drawPoint(this.rightCtx, x, y, modifiedColor);
           return;
         }
 
         // 启动闪烁定时器
         this.timerId = setInterval(() => {
           if (this.blink) {
-            this.drawPoint(this.rightCtx, x, y, 'black');
+            this.drawPoint(this.rightCtx, x, y, originalColor); // 闪回原始颜色
           } else {
-            this.drawPoint(this.rightCtx, x, y, color);
+            this.drawPoint(this.rightCtx, x, y, modifiedColor); // 显示修改后的颜色
           }
           this.blink = !this.blink;
         }, 300);
 
-        // 初始显示黑色
-        this.drawPoint(this.rightCtx, x, y, 'black');
+        // 初始闪烁
+        this.drawPoint(this.rightCtx, x, y, originalColor);
       }
     }
 
